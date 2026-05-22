@@ -325,55 +325,72 @@ jobs:
           retention-days: 30
 
   # ===========================================================================
-  # JOB 6: Safety Pipeline Summary
+  # JOB 6a: Safety Pipeline Summary (always prints — even on failure)
   # ===========================================================================
   safety-pipeline-summary:
-    name: "F-6 Safety Pipeline Gate"
+    name: "F-6 Safety Pipeline Summary"
     runs-on: ubuntu-latest
     needs: [verify-toolchain, build-and-lint, test, coverage, docs]
     if: always()
     steps:
-      - name: Pipeline result summary
+      - name: Print pipeline results
         run: |
           echo "==========================================================="
           echo "  Ferrocene POC - Safety Pipeline Summary"
           echo "==========================================================="
+          echo "  Commit  : ${{ github.sha }}"
+          echo "  Branch  : ${{ github.ref_name }}"
+          echo "  Trigger : ${{ github.event_name }}"
           echo ""
-          echo "  Job Results:"
-          echo "    F-1 Toolchain Verification : ${{ needs.verify-toolchain.result }}"
-          echo "    F-2 Build + Static Analysis: ${{ needs.build-and-lint.result }}"
-          echo "    F-3 Test Suite             : ${{ needs.test.result }}"
-          echo "    F-4 Coverage Gate (>=66%)  : ${{ needs.coverage.result }}"
-          echo "    F-5 Documentation          : ${{ needs.docs.result }}"
-          echo ""
-          echo "  Commit: ${{ github.sha }}"
-          echo "  Branch: ${{ github.ref_name }}"
-          echo "  Triggered by: ${{ github.event_name }}"
+          echo "  F-1 Toolchain Verification : ${{ needs.verify-toolchain.result }}"
+          echo "  F-2 Build + Static Analysis: ${{ needs.build-and-lint.result }}"
+          echo "  F-3 Test Suite             : ${{ needs.test.result }}"
+          echo "  F-4 Coverage Gate (>=66%)  : ${{ needs.coverage.result }}"
+          echo "  F-5 Documentation          : ${{ needs.docs.result }}"
           echo ""
           echo "  ISO 26262 Evidence Artifacts:"
-          echo "    coverage-evidence-${{ github.sha }}.zip  (coverage.lcov)"
-          echo "    rust-docs-${{ github.sha }}.zip          (API documentation)"
-          echo ""
-          echo "  Next steps for TUV submission:"
-          echo "    1. Change rust-toolchain.toml: channel = 'ferrocene'"
-          echo "    2. Purchase Ferrocene license from Ferrous Systems"
-          echo "    3. Compile safety documents (HARA, FSC, TSC, Safety Plan)"
-          echo "    4. Submit to TUV SUD with coverage.lcov and sanitizer logs"
+          echo "    coverage-evidence-${{ github.sha }}.zip"
+          echo "    rust-docs-${{ github.sha }}.zip"
           echo "==========================================================="
 
-      # FIX-07: GitHub Actions does NOT support multiline block scalar '|' for
-      #         step-level 'if' conditions. Must be a single-line expression.
-      # FIX-15: needs context in step 'if' must use ${{ }} syntax
-      - name: Fail if any safety job failed
-        if: ${{ needs.verify-toolchain.result == 'failure' || needs.build-and-lint.result == 'failure' || needs.test.result == 'failure' || needs.coverage.result == 'failure' }}
+  # ===========================================================================
+  # JOB 6b: Block merge if any safety job failed
+  # needs context is valid at JOB level — this is the correct pattern
+  # ===========================================================================
+  safety-gate-fail:
+    name: "F-6 Safety Gate - FAILED"
+    runs-on: ubuntu-latest
+    needs: [verify-toolchain, build-and-lint, test, coverage]
+    if: >
+      always() && (
+        needs.verify-toolchain.result == 'failure' ||
+        needs.build-and-lint.result   == 'failure' ||
+        needs.test.result             == 'failure' ||
+        needs.coverage.result         == 'failure'
+      )
+    steps:
+      - name: Block merge
         run: |
           echo "SAFETY PIPELINE FAILED - PR MERGE BLOCKED"
-          echo "   Fix all failed jobs before requesting review."
+          echo "Fix all failed jobs before requesting review."
           exit 1
 
+  # ===========================================================================
+  # JOB 6c: Confirm all clear — safe to merge
+  # ===========================================================================
+  safety-gate-pass:
+    name: "F-6 Safety Gate - PASSED"
+    runs-on: ubuntu-latest
+    needs: [verify-toolchain, build-and-lint, test, coverage, docs]
+    if: >
+      needs.verify-toolchain.result == 'success' &&
+      needs.build-and-lint.result   == 'success' &&
+      needs.test.result             == 'success' &&
+      needs.coverage.result         == 'success' &&
+      needs.docs.result             == 'success'
+    steps:
       - name: All safety checks passed
-        if: ${{ needs.verify-toolchain.result == 'success' && needs.build-and-lint.result == 'success' && needs.test.result == 'success' && needs.coverage.result == 'success' }}
         run: |
           echo "ALL SAFETY CHECKS PASSED"
-          echo "   This commit is safe to merge."
-          echo "   Evidence artifacts archived for TUV submission."
+          echo "This commit is safe to merge."
+          echo "Evidence artifacts archived for TUV submission."

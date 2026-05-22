@@ -10,8 +10,9 @@ coverage_html/
 # Downloaded binaries
 actionlint
 
-# Editor files
-.vscode/
+# Editor files — commit .vscode/settings.json (schema bindings) but ignore personal settings
+.vscode/*
+!.vscode/settings.json
 .idea/
 *.swp
 *.swo

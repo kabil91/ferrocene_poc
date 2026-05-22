@@ -1,0 +1,30 @@
+{
+  // ─── YAML Schema Bindings ───────────────────────────────────────────────────
+  // Tells the YAML extension to validate workflow files against the official
+  // GitHub Actions JSON schema instead of a generic YAML schema.
+  // This eliminates false-positive "problems" for valid Actions expressions
+  // like ${{ env.X }}, needs.X.result, if: always(), etc.
+  "yaml.schemas": {
+    "https://json.schemastore.org/github-workflow.json": [
+      ".github/workflows/*.yml",
+      ".github/workflows/*.yaml"
+    ]
+  },
+
+  // ─── Disable built-in YAML validation in favour of schema-aware validation ──
+  "yaml.validate": true,
+  "yaml.hover": true,
+  "yaml.completion": true,
+
+  // ─── GitHub Actions extension settings ──────────────────────────────────────
+  // Suppresses the extension's own schema warnings which duplicate the YAML ones
+  "github-actions.workflows.pinned.actions": "ignore",
+  "github-actions.workflows.pinned.workflows": "ignore",
+
+  // ─── Editor settings for YAML files ─────────────────────────────────────────
+  "[yaml]": {
+    "editor.formatOnSave": false,
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  }
+}
