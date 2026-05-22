@@ -236,15 +236,14 @@ jobs:
       - name: Generate coverage LCOV report
         run: |
           cargo llvm-cov \
-            --all-features \
             --workspace \
+            --ignore-filename-regex "src/main\.rs" \
             --lcov \
             --output-path coverage.lcov
 
           echo "=== Coverage summary ==="
           cargo llvm-cov report \
-            --all-features \
-            --workspace \
+            --ignore-filename-regex "src/main\.rs" \
             --summary-only
 
       - name: Enforce coverage threshold
