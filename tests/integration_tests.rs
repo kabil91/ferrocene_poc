@@ -39,11 +39,11 @@
 //   targets the highest coverage achievable.
 // =============================================================================
 
-use ferrocene_poc::safety::brake_controller::{
-    BrakeAction, BrakeController, BrakeError, BrakePressureKpa, BrakeState, SpeedKmh,
-};
 use ferrocene_poc::safety::airbag_sensor::{
     AccelerationG, AirbagController, DeploymentDecision, SensorVote, TimeMs,
+};
+use ferrocene_poc::safety::brake_controller::{
+    BrakeAction, BrakeController, BrakeError, BrakePressureKpa, BrakeState, SpeedKmh,
 };
 
 // =============================================================================
@@ -112,16 +112,28 @@ fn test_pressure_valid_exact_boundary_min() {
     // Boundary conditions are notorious failure points in C/C++ (off-by-one)
     // Rust's >= operator guarantees correct boundary inclusion
     let ctrl = BrakeController::new(400.0, 1.0);
-    assert!(ctrl.pressure_is_valid(BrakePressureKpa(1.0)),  "Exactly at min should be VALID");
-    assert!(!ctrl.pressure_is_valid(BrakePressureKpa(0.9)), "Just below min should be INVALID");
+    assert!(
+        ctrl.pressure_is_valid(BrakePressureKpa(1.0)),
+        "Exactly at min should be VALID"
+    );
+    assert!(
+        !ctrl.pressure_is_valid(BrakePressureKpa(0.9)),
+        "Just below min should be INVALID"
+    );
 }
 
 #[test]
 fn test_pressure_valid_exact_boundary_max() {
     // Boundary value test: pressure exactly AT maximum threshold
     let ctrl = BrakeController::new(400.0, 1.0);
-    assert!(ctrl.pressure_is_valid(BrakePressureKpa(400.0)), "Exactly at max should be VALID");
-    assert!(!ctrl.pressure_is_valid(BrakePressureKpa(400.1)),"Just above max should be INVALID");
+    assert!(
+        ctrl.pressure_is_valid(BrakePressureKpa(400.0)),
+        "Exactly at max should be VALID"
+    );
+    assert!(
+        !ctrl.pressure_is_valid(BrakePressureKpa(400.1)),
+        "Just above max should be INVALID"
+    );
 }
 
 // -----------------------------------------------------------------------------
@@ -184,7 +196,10 @@ fn test_brake_command_no_pedal_input_releases() {
     // and is a perfectly valid, expected value — distinct from a sensor fault.
     let mut ctrl = BrakeController::new(400.0, 0.0); // min=0.0 allows "no pedal" reading
     let result = ctrl.brake_command(SpeedKmh(80.0), BrakePressureKpa(0.0));
-    assert!(result.is_ok(), "No-pedal command should succeed with min=0.0");
+    assert!(
+        result.is_ok(),
+        "No-pedal command should succeed with min=0.0"
+    );
     match result.unwrap() {
         BrakeAction::Release => {} // expected
         other => panic!("Expected Release, got {:?}", other),
@@ -209,7 +224,11 @@ fn test_invalid_sensor_triggers_fault_state() {
     // Out-of-range pressure → fault
     let result = ctrl.brake_command(SpeedKmh(60.0), BrakePressureKpa(999.0));
     assert!(result.is_err(), "Invalid sensor should return error");
-    assert_eq!(ctrl.state(), BrakeState::FaultDetected, "State must be FaultDetected");
+    assert_eq!(
+        ctrl.state(),
+        BrakeState::FaultDetected,
+        "State must be FaultDetected"
+    );
 
     // Verify fault is sticky — next valid command still rejected
     let result2 = ctrl.brake_command(SpeedKmh(60.0), BrakePressureKpa(100.0));
@@ -228,11 +247,18 @@ fn test_hardware_reset_clears_fault() {
 
     // Reset via hardware reset (production: needs safety interlock confirmation)
     ctrl.hardware_reset();
-    assert_eq!(ctrl.state(), BrakeState::Inactive, "After reset state should be Inactive");
+    assert_eq!(
+        ctrl.state(),
+        BrakeState::Inactive,
+        "After reset state should be Inactive"
+    );
 
     // Commands should work again
     let result = ctrl.brake_command(SpeedKmh(80.0), BrakePressureKpa(100.0));
-    assert!(result.is_ok(), "Command should succeed after hardware reset");
+    assert!(
+        result.is_ok(),
+        "Command should succeed after hardware reset"
+    );
 }
 
 #[test]
@@ -280,7 +306,8 @@ fn test_misconfigured_controller_panics_at_construction() {
 
 #[test]
 fn test_sensor_vote_all_deploy() {
-    let vote = SensorVote::majority_vote(SensorVote::Deploy, SensorVote::Deploy, SensorVote::Deploy);
+    let vote =
+        SensorVote::majority_vote(SensorVote::Deploy, SensorVote::Deploy, SensorVote::Deploy);
     assert_eq!(vote, SensorVote::Deploy, "3/3 deploy must be Deploy");
 }
 
@@ -351,9 +378,11 @@ fn test_airbag_mcdc_t1_all_conditions_fire() {
     // T1: A=true (2/3 majority), B=true (30G >= 25G), C=true (20ms <= 30ms) → FIRE
     let ctrl = AirbagController::new(25.0, 30);
     let decision = ctrl.evaluate_deployment(
-        SensorVote::Deploy, SensorVote::Deploy, SensorVote::Hold, // 2-of-3 → Deploy
-        AccelerationG(30.0),  // B=true
-        TimeMs(20),           // C=true
+        SensorVote::Deploy,
+        SensorVote::Deploy,
+        SensorVote::Hold,    // 2-of-3 → Deploy
+        AccelerationG(30.0), // B=true
+        TimeMs(20),          // C=true
     );
     match decision {
         DeploymentDecision::FireAirbag { .. } => {}
@@ -367,11 +396,17 @@ fn test_airbag_mcdc_t2_minority_vote_holds() {
     // Proves: sensor majority independently controls deployment
     let ctrl = AirbagController::new(25.0, 30);
     let decision = ctrl.evaluate_deployment(
-        SensorVote::Deploy, SensorVote::Hold, SensorVote::Hold, // 1-of-3 → Hold
+        SensorVote::Deploy,
+        SensorVote::Hold,
+        SensorVote::Hold, // 1-of-3 → Hold
         AccelerationG(30.0),
         TimeMs(20),
     );
-    assert_eq!(decision, DeploymentDecision::Hold, "T2 FAILED: minority vote should Hold");
+    assert_eq!(
+        decision,
+        DeploymentDecision::Hold,
+        "T2 FAILED: minority vote should Hold"
+    );
 }
 
 #[test]
@@ -380,11 +415,17 @@ fn test_airbag_mcdc_t3_low_acceleration_holds() {
     // Proves: acceleration threshold independently controls deployment
     let ctrl = AirbagController::new(25.0, 30);
     let decision = ctrl.evaluate_deployment(
-        SensorVote::Deploy, SensorVote::Deploy, SensorVote::Hold,
+        SensorVote::Deploy,
+        SensorVote::Deploy,
+        SensorVote::Hold,
         AccelerationG(15.0), // B=false — below threshold
         TimeMs(20),
     );
-    assert_eq!(decision, DeploymentDecision::Hold, "T3 FAILED: low-G should Hold");
+    assert_eq!(
+        decision,
+        DeploymentDecision::Hold,
+        "T3 FAILED: low-G should Hold"
+    );
 }
 
 #[test]
@@ -394,11 +435,17 @@ fn test_airbag_mcdc_t4_late_decision_holds() {
     // (A late deployment decision is more dangerous than no deployment)
     let ctrl = AirbagController::new(25.0, 30);
     let decision = ctrl.evaluate_deployment(
-        SensorVote::Deploy, SensorVote::Deploy, SensorVote::Hold,
+        SensorVote::Deploy,
+        SensorVote::Deploy,
+        SensorVote::Hold,
         AccelerationG(30.0),
         TimeMs(50), // C=false — exceeded 30ms budget
     );
-    assert_eq!(decision, DeploymentDecision::Hold, "T4 FAILED: late decision should Hold");
+    assert_eq!(
+        decision,
+        DeploymentDecision::Hold,
+        "T4 FAILED: late decision should Hold"
+    );
 }
 
 #[test]
@@ -406,7 +453,9 @@ fn test_airbag_sensor_fault_detected() {
     // All sensors deploy but acceleration near-zero → physically impossible → SensorFault
     let ctrl = AirbagController::new(25.0, 30);
     let decision = ctrl.evaluate_deployment(
-        SensorVote::Deploy, SensorVote::Deploy, SensorVote::Deploy,
+        SensorVote::Deploy,
+        SensorVote::Deploy,
+        SensorVote::Deploy,
         AccelerationG(0.2), // Near-zero — impossible with 3/3 deploy votes
         TimeMs(10),
     );
@@ -423,11 +472,17 @@ fn test_airbag_disarmed_prevents_deployment() {
     ctrl.set_armed(false);
 
     let decision = ctrl.evaluate_deployment(
-        SensorVote::Deploy, SensorVote::Deploy, SensorVote::Deploy,
+        SensorVote::Deploy,
+        SensorVote::Deploy,
+        SensorVote::Deploy,
         AccelerationG(50.0),
         TimeMs(10),
     );
-    assert_eq!(decision, DeploymentDecision::Hold, "Disarmed system must Hold regardless of inputs");
+    assert_eq!(
+        decision,
+        DeploymentDecision::Hold,
+        "Disarmed system must Hold regardless of inputs"
+    );
 }
 
 // =============================================================================
@@ -445,7 +500,7 @@ fn test_airbag_disarmed_prevents_deployment() {
 fn test_crash_scenario_brake_and_airbag_coordination() {
     // --- PRE-CRASH: Normal driving ---
     let mut brake = BrakeController::new(400.0, 1.0);
-    let airbag    = AirbagController::new(25.0, 30);
+    let airbag = AirbagController::new(25.0, 30);
 
     // Driver braking at high speed before impact
     let pre_crash = brake.brake_command(SpeedKmh(120.0), BrakePressureKpa(300.0));
@@ -458,12 +513,16 @@ fn test_crash_scenario_brake_and_airbag_coordination() {
     // --- IMPACT ---
     // Airbag sensors detect 40G crash
     let deploy_decision = airbag.evaluate_deployment(
-        SensorVote::Deploy, SensorVote::Deploy, SensorVote::Deploy,
+        SensorVote::Deploy,
+        SensorVote::Deploy,
+        SensorVote::Deploy,
         AccelerationG(40.0),
         TimeMs(18),
     );
     match deploy_decision {
-        DeploymentDecision::FireAirbag { peak_acceleration, .. } => {
+        DeploymentDecision::FireAirbag {
+            peak_acceleration, ..
+        } => {
             assert!(peak_acceleration.0 >= 25.0, "40G must exceed 25G threshold");
         }
         other => panic!("Impact should FireAirbag, got {:?}", other),

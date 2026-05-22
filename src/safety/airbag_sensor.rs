@@ -134,10 +134,10 @@ pub enum DeploymentDecision {
 /// - Frontal crash: ~30–50G peak, decision in 10–25ms
 /// - Minor rear impact: 5–10G, should NOT deploy
 pub struct AirbagController {
-    deploy_threshold_g:   f32,
+    deploy_threshold_g: f32,
     max_decision_time_ms: u32,
-    deployment_armed:     bool,
-    _thread_lock:         PhantomData<*const ()>, // Strips Send and Sync automatically!
+    deployment_armed: bool,
+    _thread_lock: PhantomData<*const ()>, // Strips Send and Sync automatically!
 }
 
 impl AirbagController {
@@ -150,8 +150,8 @@ impl AirbagController {
         AirbagController {
             deploy_threshold_g,
             max_decision_time_ms,
-            deployment_armed: true,  // Armed by default at ECU power-on
-            _thread_lock:     PhantomData,
+            deployment_armed: true, // Armed by default at ECU power-on
+            _thread_lock: PhantomData,
         }
     }
 
@@ -189,11 +189,11 @@ impl AirbagController {
     /// - `SensorFault` if inputs appear corrupted
     pub fn evaluate_deployment(
         &self,
-        sensor_1:          SensorVote,
-        sensor_2:          SensorVote,
-        sensor_3:          SensorVote,
+        sensor_1: SensorVote,
+        sensor_2: SensorVote,
+        sensor_3: SensorVote,
         peak_acceleration: AccelerationG,
-        time_to_decision:  TimeMs,
+        time_to_decision: TimeMs,
     ) -> DeploymentDecision {
         // -----------------------------------------------------------------------
         // GUARD: Disarmed state check
@@ -213,9 +213,7 @@ impl AirbagController {
         // SANITY CHECK: Detect impossible sensor combinations
         // All Deploy + acceleration below threshold → potential sensor fault
         // -----------------------------------------------------------------------
-        if consensus == SensorVote::Deploy
-            && peak_acceleration.0 < self.deploy_threshold_g * 0.1
-        {
+        if consensus == SensorVote::Deploy && peak_acceleration.0 < self.deploy_threshold_g * 0.1 {
             // Three sensors agree on deploy but acceleration is negligible.
             // This is physically impossible — sensors are likely shorted together.
             return DeploymentDecision::SensorFault {
@@ -231,8 +229,7 @@ impl AirbagController {
         // Condition C: decision made within timing budget
         // (Condition D — armed — already checked above)
         // -----------------------------------------------------------------------
-        let should_fire =
-            consensus == SensorVote::Deploy                  // Condition A
+        let should_fire = consensus == SensorVote::Deploy                  // Condition A
             && peak_acceleration.0 >= self.deploy_threshold_g // Condition B
             && time_to_decision.0 <= self.max_decision_time_ms; // Condition C
 

@@ -31,11 +31,11 @@
 // Allow unused imports in main for cleaner demonstration output
 #![allow(unused_imports)]
 
-use ferrocene_poc::safety::brake_controller::{
-    BrakeAction, BrakeController, BrakePressureKpa, SpeedKmh,
-};
 use ferrocene_poc::safety::airbag_sensor::{
     AccelerationG, AirbagController, DeploymentDecision, SensorVote, TimeMs,
+};
+use ferrocene_poc::safety::brake_controller::{
+    BrakeAction, BrakeController, BrakePressureKpa, SpeedKmh,
 };
 
 fn main() {
@@ -73,7 +73,7 @@ fn main() {
     println!("Scenario 4 — Faulty pressure sensor (999 kPa > 400 kPa max):");
     println!("  Speed: 80 km/h | Pressure: 999 kPa (INVALID — above max)");
     match result {
-        Ok(action)  => println!("  Result: {:?} ← should not reach here", action),
+        Ok(action) => println!("  Result: {:?} ← should not reach here", action),
         Err(e) => println!("  Error (expected): {:?}", e),
     }
     println!("  Controller state after fault: {:?}\n", brake.state());
@@ -82,7 +82,7 @@ fn main() {
     let result = brake.brake_command(SpeedKmh(60.0), BrakePressureKpa(100.0));
     println!("Scenario 5 — Command after fault (controller locked):");
     match result {
-        Ok(action)  => println!("  Result: {:?} ← should not reach here", action),
+        Ok(action) => println!("  Result: {:?} ← should not reach here", action),
         Err(e) => println!("  Error (expected — fault lock): {:?}", e),
     }
     println!();
@@ -118,7 +118,7 @@ fn main() {
     let decision = airbag.evaluate_deployment(
         SensorVote::Deploy,
         SensorVote::Deploy,
-        SensorVote::Hold,   // Sensor 3 didn't detect it (faulty or at bad angle)
+        SensorVote::Hold, // Sensor 3 didn't detect it (faulty or at bad angle)
         AccelerationG(32.0),
         TimeMs(20),
     );
@@ -129,7 +129,7 @@ fn main() {
     // Scenario 9: Minor parking impact — should NOT deploy
     let decision = airbag.evaluate_deployment(
         SensorVote::Hold,
-        SensorVote::Deploy,  // One sensor overreacted
+        SensorVote::Deploy, // One sensor overreacted
         SensorVote::Hold,
         AccelerationG(8.0),
         TimeMs(5),
@@ -143,7 +143,7 @@ fn main() {
         SensorVote::Deploy,
         SensorVote::Deploy,
         SensorVote::Deploy,
-        AccelerationG(0.2),  // Near-zero — physically impossible combination
+        AccelerationG(0.2), // Near-zero — physically impossible combination
         TimeMs(5),
     );
     println!("Scenario 10 — Sensor fault detected (all deploy + near-zero G):");

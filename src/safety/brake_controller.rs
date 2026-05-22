@@ -93,9 +93,9 @@ pub struct SpeedKmh(pub f32);
 /// Ferrocene formally proves this ownership rule is enforced.
 pub struct BrakeController {
     current_state: BrakeState,
-    max_pressure:  f32,     // kPa — calibrated at manufacturing
-    min_pressure:  f32,     // kPa — minimum detectable pressure
-    _thread_lock:  PhantomData<*const ()>, // Strips Send and Sync automatically!
+    max_pressure: f32,                    // kPa — calibrated at manufacturing
+    min_pressure: f32,                    // kPa — minimum detectable pressure
+    _thread_lock: PhantomData<*const ()>, // Strips Send and Sync automatically!
 }
 
 impl BrakeController {
@@ -201,7 +201,7 @@ impl BrakeController {
     #[must_use = "Brake command result MUST be handled — ignoring errors is a safety violation"]
     pub fn brake_command(
         &mut self,
-        speed:    SpeedKmh,
+        speed: SpeedKmh,
         pressure: BrakePressureKpa,
     ) -> Result<BrakeAction, BrakeError> {
         // -----------------------------------------------------------------------
@@ -225,8 +225,8 @@ impl BrakeController {
             self.current_state = BrakeState::FaultDetected;
             return Err(BrakeError::InvalidSensor {
                 reading: pressure,
-                min:     self.min_pressure,
-                max:     self.max_pressure,
+                min: self.min_pressure,
+                max: self.max_pressure,
             });
         }
 
@@ -240,11 +240,10 @@ impl BrakeController {
         // MC/DC requires: each condition independently controls the outcome.
         // Full MC/DC test set: see tests/integration_tests.rs lines 120-180.
         // -----------------------------------------------------------------------
-        let should_engage_abs =
-            speed.0 > 20.0          // Condition A
-            && pressure.0 > 50.0;   // Condition B
-            // Note: Condition C already validated above — short-circuit avoids
-            // re-evaluating a known-valid result, improving determinism.
+        let should_engage_abs = speed.0 > 20.0          // Condition A
+            && pressure.0 > 50.0; // Condition B
+                                  // Note: Condition C already validated above — short-circuit avoids
+                                  // re-evaluating a known-valid result, improving determinism.
 
         if should_engage_abs {
             self.current_state = BrakeState::Active;

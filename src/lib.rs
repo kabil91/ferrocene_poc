@@ -21,11 +21,9 @@
 // Every pub function must have a doc comment explaining its safety behaviour.
 // TÜV auditors read these comments — they are safety documentation.
 #![deny(missing_docs)]
-
 // Warn on unused code — dead code can hide latent safety issues.
 // Ferrocene's -Clink-dead-code flag catches this at link time too.
 #![warn(dead_code)]
-
 // Warn on unused Results — in safety-critical code, discarding a Result
 // that carries an error is a potential safety violation.
 #![warn(unused_must_use)]
