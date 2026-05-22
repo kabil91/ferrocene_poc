@@ -39,24 +39,24 @@ PASS=0; FAIL=0; WARN=0
 # ─── Check 1: rust-toolchain.toml exists ──────────────────────────────────────
 info "Checking rust-toolchain.toml..."
 if [[ -f "rust-toolchain.toml" ]]; then
-    CHANNEL=$(grep 'channel' rust-toolchain.toml | cut -d'"' -f2)
+    CHANNEL=$(grep '^channel' rust-toolchain.toml | head -n 1 | cut -d'"' -f2)
     ok "rust-toolchain.toml found, channel = \"$CHANNEL\""
-    ((PASS++))
+    PASS=$((PASS + 1))
     if [[ "$CHANNEL" == "ferrocene" ]]; then
         ok "  ✅ Channel is 'ferrocene' — ASIL-D certified compiler active"
     elif [[ "$CHANNEL" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         warn "  ⚠️  Channel is '$CHANNEL' (standard rustc — not certified)"
         warn "     For ASIL-D: change to channel = \"ferrocene\""
-        ((WARN++))
+        WARN=$((WARN + 1))
     else
         warn "  Channel is '$CHANNEL' — verify this is your intended toolchain"
-        ((WARN++))
+        WARN=$((WARN + 1))
     fi
 else
     fail "rust-toolchain.toml NOT FOUND"
     fail "  This means different developers may use different compiler versions"
     fail "  Create rust-toolchain.toml with: [toolchain]\n  channel = \"1.92.0\""
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
 fi
 echo
 
@@ -64,11 +64,11 @@ echo
 info "Checking rustup toolchain resolution..."
 if RUSTC_VER=$(rustc --version 2>&1); then
     ok "rustc resolved: $RUSTC_VER"
-    ((PASS++))
+    PASS=$((PASS + 1))
 else
     fail "rustc not found or could not resolve channel"
     fail "  Run: rustup toolchain install $CHANNEL"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
 fi
 echo
 
@@ -76,10 +76,10 @@ echo
 info "Checking cargo..."
 if CARGO_VER=$(cargo --version 2>&1); then
     ok "cargo: $CARGO_VER"
-    ((PASS++))
+    PASS=$((PASS + 1))
 else
     fail "cargo not found"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
 fi
 echo
 
@@ -87,21 +87,21 @@ echo
 info "Checking llvm-tools-preview (needed for coverage pipeline)..."
 if rustup component list --installed 2>/dev/null | grep -q "llvm-tools"; then
     ok "llvm-tools-preview is installed"
-    ((PASS++))
+    PASS=$((PASS + 1))
     # Check for individual tools
     for tool in llvm-profdata llvm-cov; do
         if command -v "$tool" &>/dev/null; then
             ok "  $tool: $(command -v "$tool")"
         else
             warn "  $tool not on PATH (may still work via cargo proxy)"
-            ((WARN++))
+            WARN=$((WARN + 1))
         fi
     done
 else
     warn "llvm-tools-preview NOT installed"
     warn "  Coverage pipeline (scripts/run_coverage.sh) needs this"
     warn "  Install: rustup component add llvm-tools-preview"
-    ((WARN++))
+    WARN=$((WARN + 1))
 fi
 echo
 
@@ -109,11 +109,11 @@ echo
 info "Checking cargo-llvm-cov (alternative coverage tool)..."
 if command -v cargo-llvm-cov &>/dev/null; then
     ok "cargo-llvm-cov available: $(cargo llvm-cov --version 2>/dev/null || echo 'installed')"
-    ((PASS++))
+    PASS=$((PASS + 1))
 else
     warn "cargo-llvm-cov not installed (optional but useful)"
     warn "  Install: cargo install cargo-llvm-cov"
-    ((WARN++))
+    WARN=$((WARN + 1))
 fi
 echo
 
@@ -122,7 +122,7 @@ info "Checking Cargo.toml..."
 if [[ -f "Cargo.toml" ]]; then
     PKG_NAME=$(grep '^name' Cargo.toml | head -1 | cut -d'"' -f2)
     ok "Cargo.toml found, package = \"$PKG_NAME\""
-    ((PASS++))
+    PASS=$((PASS + 1))
 
     # Verify overflow-checks is set in release profile
     if grep -q "overflow-checks" Cargo.toml; then
@@ -130,11 +130,11 @@ if [[ -f "Cargo.toml" ]]; then
     else
         warn "  overflow-checks not found in Cargo.toml profiles"
         warn "  Add: [profile.release]\n       overflow-checks = true"
-        ((WARN++))
+        WARN=$((WARN + 1))
     fi
 else
     fail "Cargo.toml not found"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
 fi
 echo
 
@@ -144,17 +144,17 @@ RS_COUNT=$(find src/ -name "*.rs" 2>/dev/null | wc -l)
 TEST_COUNT=$(find tests/ -name "*.rs" 2>/dev/null | wc -l)
 if [[ "$RS_COUNT" -gt 0 ]]; then
     ok "Source files: $RS_COUNT .rs files in src/"
-    ((PASS++))
+    PASS=$((PASS + 1))
 else
     fail "No .rs files found in src/"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
 fi
 if [[ "$TEST_COUNT" -gt 0 ]]; then
     ok "Test files  : $TEST_COUNT .rs files in tests/"
-    ((PASS++))
+    PASS=$((PASS + 1))
 else
     warn "No test files in tests/ — integration tests missing"
-    ((WARN++))
+    WARN=$((WARN + 1))
 fi
 echo
 
@@ -162,10 +162,10 @@ echo
 info "Running cargo check (compile check without producing binary)..."
 if cargo check --quiet 2>&1; then
     ok "cargo check passed — no compile errors"
-    ((PASS++))
+    PASS=$((PASS + 1))
 else
     fail "cargo check FAILED — fix compile errors before running tests"
-    ((FAIL++))
+    FAIL=$((FAIL + 1))
 fi
 echo
 
