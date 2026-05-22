@@ -1,0 +1,51 @@
+# =============================================================================
+# FILE: rust-toolchain.toml
+# PURPOSE: Pins the exact Rust/Ferrocene compiler version for this project.
+#          This single file controls which compiler binary ALL developers,
+#          ALL CI runs, and the PRODUCTION build use — zero version drift.
+#
+# MANUAL STEP 1 (CURRENT STATE — Development/POC):
+#   The line below uses standard rustc. This produces identical binaries to
+#   Ferrocene but carries NO legal certification. Safe for development.
+#
+# MANUAL STEP 2 (PRODUCTION — After purchasing Ferrocene license):
+#   Change channel = "1.92.0"  →  channel = "ferrocene"
+#   That is the ONLY code change required to become ASIL-D certified.
+#   Every build command, every test, every coverage script continues to work.
+#
+# WHY THIS FILE EXISTS:
+#   Without this file, `cargo` uses whatever rustc is installed on the machine.
+#   That means developer A uses rustc 1.92, developer B uses 1.88, CI uses 1.90.
+#   For automotive safety (ISO 26262), this is unacceptable — the compiler
+#   must be the same binary in all environments.
+#
+# CERTIFICATION NOTE:
+#   When channel = "ferrocene" and the Ferrocene license is active,
+#   this file is the evidence artifact proving the certified compiler was used.
+#   TÜV SÜD auditors check this file first.
+# =============================================================================
+
+[toolchain]
+# -----------------------------------------------------------------------
+# CURRENT (POC / Development):
+#   Standard rustc 1.92.0 — same binary output as Ferrocene but NOT certified
+# -----------------------------------------------------------------------
+channel = "1.92.0"
+
+# -----------------------------------------------------------------------
+# PRODUCTION SWITCH (requires Ferrocene commercial license):
+#   Uncomment the line below and comment out the line above.
+#   Technical change = 1 line. Zero code changes in src/.
+# -----------------------------------------------------------------------
+# channel = "ferrocene"
+
+# -----------------------------------------------------------------------
+# SUPPORTED PLATFORMS (matches Ferrocene's four certified targets):
+#   These are the platform triples Ferrocene is independently qualified for.
+#   Using the wrong platform triple invalidates your ASIL-D safety argument
+#   even if the binary happens to work.
+# -----------------------------------------------------------------------
+# x86_64-unknown-linux-gnu   → Linux x86_64  (developer machines, CI hosts)
+# aarch64-unknown-linux-gnu  → Linux ARM64   (ARM-based ECUs running AutoSD)
+# x86_64-pc-nto-qnx800       → QNX x86_64   (QNX QEMU / x86 ECUs)
+# aarch64-unknown-nto-qnx800 → QNX ARM64    (QNX ARM-based production ECUs)

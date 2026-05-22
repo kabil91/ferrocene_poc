@@ -1,0 +1,102 @@
+# =============================================================================
+# FILE: Cargo.toml
+# PURPOSE: Rust project manifest — defines the crate, its dependencies,
+#          and build profile settings required for safety-critical builds.
+#
+# MANUAL STEP 3 (Understanding the manifest):
+#   This file is read by `cargo` at every build. In a Ferrocene pipeline,
+#   it is also read by `bazel` via rules_rust which wraps cargo.
+#   For the POC, plain `cargo` commands work fine.
+#
+# SAFETY-CRITICAL BUILD PROFILE:
+#   The [profile.release] section below mirrors the flags injected by
+#   ferrocene_guide/configs/bazelrc_ferrocene_flags.bazelrc in the S-CORE
+#   pipeline. These flags ensure:
+#     - codegen-units=1 : Single compilation unit (no cross-unit optimisation surprises)
+#     - opt-level=2     : Balanced optimisation (safe for automotive)
+#     - debug = true    : Preserve debug info for sanitizer correlation
+#     - overflow-checks : Panic on integer overflow (not silent UB)
+#
+# MANUAL STEP 4 (Adding sanitizer features):
+#   In development/test builds, add RUSTFLAGS to enable sanitizers.
+#   See scripts/run_sanitizers.sh for the exact commands.
+#   ASan, UBSan, LSan are all available through the same Ferrocene toolchain.
+# =============================================================================
+
+[package]
+name    = "ferrocene_poc"
+version = "0.1.0"
+edition = "2021"
+
+# -----------------------------------------------------------------------
+# Crate description — appears in safety evidence package.
+# Auditors cross-reference this with the HARA (Hazard Analysis) document.
+# -----------------------------------------------------------------------
+description = "Ferrocene ASIL-D POC — Automotive Brake-by-Wire Safety Controller"
+authors     = ["S-CORE Safety Team"]
+license     = "MIT"
+
+# =============================================================================
+# DEPENDENCIES
+# Every dependency added here must be evaluated for ASIL compatibility.
+# ISO 26262 Part 8 requires tool evaluation records for all components.
+# In a certified project: each crate appears in the SBOM (Software Bill of Materials).
+# =============================================================================
+
+[dependencies]
+# -----------------------------------------------------------------------
+# No external dependencies in this POC.
+# Rationale: Minimising the dependency surface reduces SBOM complexity
+#            and audit scope. Each dependency requires its own qualification
+#            record or deviation justification.
+#
+# In a real ASIL-D project:
+#   - Prefer crates from the Ferrocene-qualified ecosystem
+#   - Document each dependency in the SBOM (CycloneDX or SPDX format)
+#   - Check crate licenses for automotive use compliance
+# -----------------------------------------------------------------------
+
+[dev-dependencies]
+# -----------------------------------------------------------------------
+# No external test dependencies either.
+# All test coverage is measured through Ferrocene's built-in
+# -Cinstrument-coverage flag (llvm-profdata / llvm-cov pipeline).
+# -----------------------------------------------------------------------
+
+# =============================================================================
+# SAFETY-CRITICAL BUILD PROFILES
+# =============================================================================
+
+[profile.release]
+# Single compilation unit — prevents cross-module inlining surprises
+# This mirrors: build:ferrocene-coverage --@rules_rust//rust/settings:extra_rustc_flag=-Ccodegen-units=1
+codegen-units = 1
+
+# Balanced optimisation safe for safety-critical use
+opt-level = 2
+
+# Preserve debug symbols for sanitizer stack traces and audit correlation
+debug = true
+
+# CRITICAL: Panic on integer overflow instead of wrapping silently.
+# In C/C++, signed integer overflow is undefined behaviour.
+# Rust + overflow-checks=true converts overflow to a controlled panic,
+# which is detectable and auditable — not silent corruption.
+overflow-checks = true
+
+# Link-time optimisation disabled — keeps object files inspectable by auditors
+lto = false
+
+[profile.dev]
+# Development: keep overflow checks on at all times
+overflow-checks = true
+debug           = true
+opt-level       = 0
+
+# -----------------------------------------------------------------------
+# MANUAL STEP 5 (Running coverage profile):
+#   When running coverage, cargo uses a special profile set via env vars:
+#     RUSTFLAGS="-Cinstrument-coverage" cargo test
+#   In Bazel/S-CORE, this is injected via bazelrc_ferrocene_flags.bazelrc.
+#   In this POC, the scripts/run_coverage.sh script sets these flags.
+# -----------------------------------------------------------------------
